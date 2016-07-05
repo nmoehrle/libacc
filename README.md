@@ -2,7 +2,7 @@ libacc
 -------------------------------------------------------------------------------
 This project offers a header only acceleration structure library including
 implementations for a BVH- and KD-Tree. Applications may include ray
-intersection tests or nearest neighbor searches.
+intersection tests, closest surface point or nearest neighbor searches.
 
 Requirements
 -------------------------------------------------------------------------------

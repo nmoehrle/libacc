@@ -85,6 +85,7 @@ private:
         std::atomic<int> * num_threads);
 
     bool intersect(Ray const & ray, typename Node::ID node_id, Hit * hit) const;
+    Vec3fType closest_point(Vec3fType vertex, typename Node::ID node_id) const;
 
 public:
     static
@@ -109,6 +110,7 @@ public:
         int max_threads = std::thread::hardware_concurrency());
 
     bool intersect(Ray ray, Hit * hit_ptr = nullptr) const;
+    Vec3fType closest_point(Vec3fType vertex, float max_dist = inf) const;
 };
 
 
@@ -166,7 +168,7 @@ BVHTree<IdxType, Vec3fType>::bsplit(typename Node::ID node_id,
     std::array<AABB, NUM_BINS> right_aabbs;
     std::vector<IdxType> bin(n);
 
-    float min_cost = std::numeric_limits<float>::infinity();
+    float min_cost = inf;
     std::pair<IdxType, char> split;
     for (char d = 0; d < 3; ++d) {
         float min = node.aabb.min[d];
@@ -258,7 +260,7 @@ BVHTree<IdxType, Vec3fType>::ssplit(typename Node::ID node_id, std::vector<AABB>
     Node & node = nodes[node_id];
     IdxType n = node.last - node.first;
 
-    float min_cost = std::numeric_limits<float>::infinity();
+    float min_cost = inf;
     std::pair<char, IdxType> split;
     std::vector<AABB> right_aabbs(n);
     for (char d = 0; d < 3; ++d) {
@@ -364,15 +366,15 @@ BVHTree<IdxType, Vec3fType>::intersect(Ray const & ray, typename Node::ID node_i
     }
     return ret;
 }
+
 template <typename IdxType, typename Vec3fType> bool
 BVHTree<IdxType, Vec3fType>::intersect(Ray ray, Hit * hit_ptr) const {
     Hit hit;
-    hit.t = std::numeric_limits<float>::infinity();
-    std::stack<typename Node::ID> s;
+    hit.t = inf;
 
-    s.push(0);
-    while (!s.empty()) {
-        typename Node::ID node_id = s.top(); s.pop();
+    typename Node::ID node_id = 0;
+    std::stack<typename Node::ID> s;
+    while (true) {
         Node const & node = nodes[node_id];
         if (node.left != NAI && node.right != NAI) {
             float tmin_left, tmin_right;
@@ -381,23 +383,31 @@ BVHTree<IdxType, Vec3fType>::intersect(Ray ray, Hit * hit_ptr) const {
             if (left && right) {
                 if (tmin_left < tmin_right) {
                     s.push(node.right);
-                    s.push(node.left);
+                    node_id = node.left;
                 } else {
                     s.push(node.left);
-                    s.push(node.right);
+                    node_id = node.right;
                 }
             } else {
-                if (right) s.push(node.right);
-                if (left) s.push(node.left);
+                if (right) node_id = node.right;
+                if (left) node_id = node.left;
+            }
+
+            if (!left && !right) {
+                if (s.empty()) break;
+                node_id = s.top(); s.pop();
             }
         } else {
             if (intersect(ray, node_id, &hit)) {
                 ray.tmax = hit.t;
             }
+
+            if (s.empty()) break;
+            node_id = s.top(); s.pop();
         }
     }
 
-    if (hit.t < std::numeric_limits<float>::infinity()) {
+    if (hit.t < inf) {
         if (hit_ptr != nullptr) {
             *hit_ptr = hit;
         }
@@ -405,6 +415,75 @@ BVHTree<IdxType, Vec3fType>::intersect(Ray ray, Hit * hit_ptr) const {
     } else {
         return false;
     }
+}
+
+template <typename IdxType, typename Vec3fType> Vec3fType
+BVHTree<IdxType, Vec3fType>::closest_point(Vec3fType vertex, typename Node::ID node_id) const {
+    Node const & node = nodes[node_id];
+
+    Vec3fType closest;
+    float dist = inf;
+
+    for (std::size_t i = node.first; i < node.last; ++i) {
+        Vec3fType closest_tri = acc::closest_point(vertex, tris[i]);
+        float dist_tri = (closest_tri - vertex).square_norm();
+        if (dist_tri < dist) {
+            closest = closest_tri;
+            dist = dist_tri;
+        }
+    }
+
+    return closest;
+}
+
+template <typename IdxType, typename Vec3fType> Vec3fType
+BVHTree<IdxType, Vec3fType>::closest_point(Vec3fType vertex, float max_dist) const {
+
+    float dist = max_dist * max_dist;
+    Vec3fType closest;
+
+    typename Node::ID node_id = 0;
+    std::stack<typename Node::ID> s;
+    while (true) {
+        Node const & node = nodes[node_id];
+        if (node.left != NAI && node.right != NAI) {
+            Vec3fType closest_left = acc::closest_point(vertex, nodes[node.left].aabb);
+            Vec3fType closest_right = acc::closest_point(vertex, nodes[node.right].aabb);
+            float dmin_left = (closest_left - vertex).square_norm();
+            float dmin_right = (closest_right - vertex).square_norm();
+            bool left = dmin_left < dist;
+            bool right = dmin_right < dist;
+            if (left && right) {
+                if (dmin_left < dmin_right) {
+                    s.push(node.right);
+                    node_id = node.left;
+                } else {
+                    s.push(node.left);
+                    node_id = node.right;
+                }
+            } else {
+                if (right) node_id = node.right;
+                if (left) node_id = node.left;
+            }
+
+            if (!left && !right) {
+                if (s.empty()) break;
+                node_id = s.top(); s.pop();
+            }
+        } else {
+            Vec3fType closest_leaf = closest_point(vertex, node_id);
+            float dist_leaf = (closest_leaf - vertex).square_norm();
+            if (dist_leaf < dist) {
+                dist = dist_leaf;
+                closest = closest_leaf;
+            }
+
+            if (s.empty()) break;
+            node_id = s.top(); s.pop();
+        }
+    }
+
+    return closest;
 }
 
 ACC_NAMESPACE_END
