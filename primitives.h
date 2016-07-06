@@ -137,34 +137,39 @@ Vec3fType closest_point(Vec3fType const & v, AABB<Vec3fType> const & aabb)
 template <typename Vec3fType> inline
 Vec3fType closest_point(Vec3fType const & vertex, Tri<Vec3fType> const & tri)
 {
-    Vec3fType v0 = tri.b - tri.a;
-    Vec3fType v1 = tri.c - tri.a;
-    Vec3fType normal = v1.cross(v0).normalized();
+    Vec3fType ab = tri.b - tri.a;
+    Vec3fType ac = tri.c - tri.a;
+    Vec3fType normal = ac.cross(ab);
+
+    float n = normal.norm();
+    //if (n < flt_eps) return false;
+
+    normal /= n;
 
     Vec3fType p = vertex - normal.dot(vertex - tri.a) * normal;
-    Vec3fType v2 = p - tri.a;
+    Vec3fType ap = p - tri.a;
 
-    Vec3fType bcoords = barycentric_coordinates(v0, v1, v2);
+    Vec3fType bcoords = barycentric_coordinates(ab, ac, ap);
 
     if (bcoords[0] < 0.0f) {
-        Vec3fType v12 = tri.c - tri.b;
-        float n = v12.norm();
-        float t = std::max(0.0f, std::min(v12.dot(p - tri.b) / n, n));
-        return tri.b + t / n * v12;
+        Vec3fType bc = tri.c - tri.b;
+        float n = bc.norm();
+        float t = std::max(0.0f, std::min(bc.dot(p - tri.b) / n, n));
+        return tri.b + t / n * bc;
     }
 
     if (bcoords[1] < 0.0f) {
-        Vec3fType v20 = tri.a - tri.c;
-        float n = v20.norm();
-        float t = std::max(0.0f, std::min(v20.dot(p - tri.c) / n, n));
-        return tri.c + t / n * v20;
+        Vec3fType ca = tri.a - tri.c;
+        float n = ca.norm();
+        float t = std::max(0.0f, std::min(ca.dot(p - tri.c) / n, n));
+        return tri.c + t / n * ca;
     }
 
     if (bcoords[2] < 0.0f) {
-        Vec3fType v01 = tri.b - tri.a;
-        float n = v01.norm();
-        float t = std::max(0.0f, std::min(v01.dot(p - tri.a) / n, n));
-        return tri.a + t / n * v01;
+        //Vec3fType ab = tri.b - tri.a;
+        float n = ab.norm();
+        float t = std::max(0.0f, std::min(ab.dot(p - tri.a) / n, n));
+        return tri.a + t / n * ab;
     }
 
     return tri.a * bcoords[0] + tri.b * bcoords[1] + tri.c * bcoords[2];
@@ -174,21 +179,26 @@ template <typename Vec3fType> inline
 bool intersect(Ray<Vec3fType> const & ray, Tri<Vec3fType> const & tri,
     float * t_ptr, Vec3fType * bcoords_ptr)
 {
-    Vec3fType v0 = tri.b - tri.a;
-    Vec3fType v1 = tri.c - tri.a;
-    Vec3fType normal = v1.cross(v0);
-    if (normal.norm() < flt_eps) return false;
-    normal.normalize();
+    Vec3fType ab = tri.b - tri.a;
+    Vec3fType ac = tri.c - tri.a;
+    Vec3fType normal = ac.cross(ab);
 
-    double cosine = normal.dot(ray.dir);
+    float n = normal.norm();
+    if (n < flt_eps) return false;
+
+    normal /= n;
+
+    float cosine = normal.dot(ray.dir);
     if (std::abs(cosine) < flt_eps) return false;
 
     float t = -normal.dot(ray.origin - tri.a) / cosine;
 
     if (t < ray.tmin || ray.tmax < t) return false;
-    Vec3fType v2 = (ray.origin - tri.a) + t * ray.dir;
 
-    Vec3fType bcoords = barycentric_coordinates(v0, v1, v2);
+    Vec3fType p = ray.origin + t * ray.dir;
+    Vec3fType ap = p - tri.a;
+
+    Vec3fType bcoords = barycentric_coordinates(ab, ac, ap);
 
     constexpr float eps = 1e-3f;
     if (-eps > bcoords[0] || bcoords[0] > 1.0f + eps) return false;
