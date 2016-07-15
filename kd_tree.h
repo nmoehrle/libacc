@@ -62,6 +62,9 @@ private:
         std::atomic<int> * num_threads);
 
 public:
+    template <class C>
+    static C convert(KDTree const & kd_tree);
+
     KDTree(std::vector<math::Vector<float, K> > const & vertices,
         int max_threads = std::thread::hardware_concurrency());
 
@@ -171,12 +174,6 @@ KDTree<K, IdxType>::find_nns(math::Vector<float, K> vertex, std::size_t n, float
     std::stack<typename Node::ID> s;
 
     while (true) {
-        while (node_id == NAI) {
-            if (s.empty()) break;
-            node_id = s.top(); s.pop();
-            down = false;
-        }
-
         Node const & node = nodes[node_id];
 
         float diff = vertex[node.d] - vertices[node.vertex_id][node.d];
@@ -195,31 +192,43 @@ KDTree<K, IdxType>::find_nns(math::Vector<float, K> vertex, std::size_t n, float
             }
 
             if (node.left == NAI && node.right == NAI) {
-                if (s.empty()) break;
-                node_id = s.top(); s.pop();
-                down = false;
+                node_id = NAI;
             } else {
-                s.push(node_id);
                 down = true;
+                typename Node::ID other;
+
                 if (diff < 0.0f) {
                     node_id = node.left;
+                    other = node.right;
                 } else {
                     node_id = node.right;
+                    other = node.left;
+                }
+
+                if (node_id != NAI) {
+                    s.push(node_id);
+                } else {
+                    node_id = other;
                 }
             }
         } else {
             if (std::abs(diff) >= max_dist) {
-                if (s.empty()) break;
-                node_id = s.top(); s.pop();
-                down = false;
+                node_id = NAI;
             } else {
                 down = true;
+
                 if (diff < 0.0f) {
                     node_id = node.right;
                 } else {
                     node_id = node.left;
                 }
             }
+        }
+
+        if (node_id == NAI) {
+            if (s.empty()) break;
+            node_id = s.top(); s.pop();
+            down = false;
         }
     }
 
