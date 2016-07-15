@@ -31,12 +31,16 @@ private:
     std::vector<math::Vector<float, K> > const & vertices;
     struct Node {
         typedef IdxType ID;
-        decltype(K) d;
-        IdxType first;
-        IdxType last;
         IdxType vertex_id;
-        Node::ID left;
-        Node::ID right;
+        decltype(K) d;
+        union {
+            IdxType first;
+            Node::ID left;
+        };
+        union {
+            IdxType last;
+            Node::ID right;
+        };
     };
 
     std::atomic<IdxType> num_nodes;
@@ -46,8 +50,6 @@ private:
         Node & node = nodes[node_id];
         node.first = first;
         node.last = last;
-        node.left = NAI;
-        node.right = NAI;
         node.vertex_id = NAI;
         node.d = d;
         return node_id;
@@ -161,6 +163,8 @@ template <unsigned K, typename IdxType>
 std::vector<std::pair<IdxType, float> >
 KDTree<K, IdxType>::find_nns(math::Vector<float, K> vertex, std::size_t n, float max_dist) const {
     std::vector<std::pair<IdxType, float> > nns;
+
+    //TODO use square distances
 
     typename Node::ID node_id = 0;
     bool down = true;
