@@ -27,8 +27,11 @@ class KDTree {
 public:
     static constexpr IdxType NAI = std::numeric_limits<IdxType>::max();
 
+    typedef std::shared_ptr<KDTree<K, IdxType> > Ptr;
+    typedef std::shared_ptr<const KDTree<K, IdxType> > ConstPtr;
+
 private:
-    std::vector<math::Vector<float, K> > const & vertices;
+    std::vector<math::Vector<float, K> > const vertices;
     struct Node {
         typedef IdxType ID;
         IdxType vertex_id;
@@ -64,6 +67,11 @@ private:
 public:
     template <class C>
     static C convert(KDTree const & kd_tree);
+
+    static Ptr create(std::vector<math::Vector<float, K> > const & vertices,
+        int max_threads = std::thread::hardware_concurrency()) {
+        return std::make_shared<KDTree>(vertices, max_threads);
+    }
 
     KDTree(std::vector<math::Vector<float, K> > const & vertices,
         int max_threads = std::thread::hardware_concurrency());
@@ -170,8 +178,8 @@ KDTree<K, IdxType>::find_nns(math::Vector<float, K> vertex, std::size_t n, float
     //TODO use square distances
 
     typename Node::ID node_id = 0;
-    bool down = true;
     std::stack<typename Node::ID> s;
+    bool down = true;
 
     while (true) {
         Node const & node = nodes[node_id];
@@ -179,56 +187,54 @@ KDTree<K, IdxType>::find_nns(math::Vector<float, K> vertex, std::size_t n, float
         float diff = vertex[node.d] - vertices[node.vertex_id][node.d];
         if (down) {
             float dist = (vertex - vertices[node.vertex_id]).norm();
-            if (dist < max_dist) {
+            if (dist <= max_dist) {
                 if (nns.size() < n) {
                     nns.emplace_back(node.vertex_id, dist);
                 } else {
                     typename std::vector<std::pair<IdxType, float> >::iterator it;
                     it = std::max_element(nns.begin(), nns.end(), compare<IdxType>);
                     *it = std::make_pair(node.vertex_id, dist);
+                }
+
+                if (nns.size() == n) {
+                    typename std::vector<std::pair<IdxType, float> >::iterator it;
                     it = std::max_element(nns.begin(), nns.end(), compare<IdxType>);
                     max_dist = it->second;
                 }
             }
 
-            if (node.left == NAI && node.right == NAI) {
-                node_id = NAI;
-            } else {
+            if (node.left != NAI || node.right != NAI) {
+                /* Inner node - traverse further down. */
                 down = true;
-                typename Node::ID other;
 
-                if (diff < 0.0f) {
-                    node_id = node.left;
-                    other = node.right;
-                } else {
-                    node_id = node.right;
-                    other = node.left;
-                }
-
-                if (node_id != NAI) {
+                if (node.left != NAI && node.right != NAI) {
                     s.push(node_id);
-                } else {
-                    node_id = other;
                 }
+
+                float diff = vertex[node.d] - vertices[node.vertex_id][node.d];
+
+                typename Node::ID next = (diff < 0.0f) ? node.left : node.right;
+                typename Node::ID other = (diff < 0.0f) ? node.right : node.left;
+
+                node_id = (next != NAI) ? next : other;
+            } else {
+                /* Leaf - traverse up and search for next node. */
+                down = false;
+                node_id = NAI;
             }
         } else {
-            if (std::abs(diff) >= max_dist) {
-                node_id = NAI;
-            } else {
+            if (std::abs(diff) < max_dist) {
                 down = true;
-
-                if (diff < 0.0f) {
-                    node_id = node.right;
-                } else {
-                    node_id = node.left;
-                }
+                node_id = (diff < 0.0f) ? node.right : node.left;
+            } else {
+                down = false;
+                node_id = NAI;
             }
         }
 
         if (node_id == NAI) {
             if (s.empty()) break;
             node_id = s.top(); s.pop();
-            down = false;
         }
     }
 
