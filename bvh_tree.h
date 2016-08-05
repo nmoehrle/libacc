@@ -92,7 +92,7 @@ public:
     Ptr create(std::vector<IdxType> const & faces,
         std::vector<Vec3fType> const & vertices,
         int max_threads = std::thread::hardware_concurrency()) {
-        return Ptr(new BVHTree(faces, vertices, max_threads));
+        return std::make_shared<BVHTree>(faces, vertices, max_threads);
     }
 
     template <class C>
@@ -112,7 +112,6 @@ public:
     bool intersect(Ray ray, Hit * hit_ptr = nullptr) const;
     Vec3fType closest_point(Vec3fType vertex, float max_dist = inf) const;
 };
-
 
 #define NUM_BINS 64
 template <typename IdxType, typename Vec3fType>
@@ -216,6 +215,7 @@ BVHTree<IdxType, Vec3fType>::bsplit(typename Node::ID node_id,
     for (Bin & bin : bins) {
         bin = {0, {Vec3fType(inf), Vec3fType(-inf)}};
     }
+
     for (std::size_t i = node.first; i < node.last; ++i) {
         AABB const & aabb = aabbs[indices[i]];
         char idx = ((mid(aabb, d) - min) / (max - min)) * (NUM_BINS - 1);

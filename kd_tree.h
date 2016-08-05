@@ -76,12 +76,13 @@ public:
     KDTree(std::vector<math::Vector<float, K> > const & vertices,
         int max_threads = std::thread::hardware_concurrency());
 
-    std::pair<IdxType, float>
-    find_nn(math::Vector<float, K> point,
+    bool
+    find_nn(math::Vector<float, K> point, std::pair<IdxType, float> * nn,
         float max_dist = std::numeric_limits<float>::infinity()) const;
 
-    std::vector<std::pair<IdxType, float> >
+    bool
     find_nns(math::Vector<float, K> point, std::size_t n,
+        std::vector<std::pair<IdxType, float> > * nns_ptr,
         float max_dist = std::numeric_limits<float>::infinity()) const;
 };
 
@@ -155,14 +156,15 @@ KDTree<K, IdxType>::ssplit(typename Node::ID node_id, std::vector<IdxType> * ind
 }
 
 template <unsigned K, typename IdxType>
-std::pair<IdxType, float>
-KDTree<K, IdxType>::find_nn(math::Vector<float, K> point, float max_dist) const {
-    std::vector<std::pair<IdxType, float> > nns = find_nns(point, 1, max_dist);
-    if (nns.empty()) {
-        return std::make_pair(NAI, max_dist);
-    } else {
-        return nns[0];
-    }
+bool
+KDTree<K, IdxType>::find_nn(math::Vector<float, K> point,
+    std::pair<IdxType, float> * nn_ptr, float max_dist) const
+{
+    std::vector<std::pair<IdxType, float> > nns;
+    if (!find_nns(point, 1, &nns, max_dist)) return false;
+
+    if (nn_ptr != nullptr) *nn_ptr = nns[0];
+    return true;
 }
 
 template <typename IdxType>
@@ -171,8 +173,10 @@ static bool compare(std::pair<IdxType, float> a, std::pair<IdxType, float> b) {
 }
 
 template <unsigned K, typename IdxType>
-std::vector<std::pair<IdxType, float> >
-KDTree<K, IdxType>::find_nns(math::Vector<float, K> vertex, std::size_t n, float max_dist) const {
+bool
+KDTree<K, IdxType>::find_nns(math::Vector<float, K> vertex, std::size_t n,
+    std::vector<std::pair<IdxType, float> > * nns_ptr, float max_dist) const
+{
     std::vector<std::pair<IdxType, float> > nns;
 
     //TODO use square distances
@@ -240,7 +244,11 @@ KDTree<K, IdxType>::find_nns(math::Vector<float, K> vertex, std::size_t n, float
 
     std::sort(nns.begin(), nns.end(), compare<IdxType>);
 
-    return nns;
+    bool success = nns.size() == n;
+
+    if (nns_ptr != nullptr) nns_ptr->swap(nns);
+
+    return success;
 }
 
 ACC_NAMESPACE_END
