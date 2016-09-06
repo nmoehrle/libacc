@@ -95,9 +95,7 @@ KDTree<K, IdxType>::KDTree(std::vector<math::Vector<float, K> > const & vertices
     nodes.resize(num_vertices);
 
     std::vector<IdxType> indices(num_vertices);
-    for (std::size_t i = 0; i < indices.size(); ++i) {
-        indices[i] = i;
-    }
+    std::iota(indices.begin(), indices.end(), 0);
 
     std::atomic<int> num_threads(max_threads);
     split(create_node(0, 0, num_vertices), &indices, &num_threads);

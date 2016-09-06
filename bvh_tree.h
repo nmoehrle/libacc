@@ -12,11 +12,12 @@
 #include <array>
 #include <deque>
 #include <stack>
-#include <cassert>
-#include <algorithm>
 #include <atomic>
 #include <thread>
 #include <limits>
+#include <algorithm>
+
+#include <cassert>
 
 #include "primitives.h"
 
@@ -334,9 +335,7 @@ BVHTree<IdxType, Vec3fType>::BVHTree(std::vector<IdxType> const & faces,
         root.aabb += aabbs[i];
     }
     indices.resize(aabbs.size());
-    for (std::size_t i = 0; i < indices.size(); ++i) {
-        indices[i] = i;
-    }
+    std::iota(indices.begin(), indices.end(), 0);
 
     std::atomic<int> num_threads(max_threads);
     split(0, aabbs, &num_threads);
