@@ -59,6 +59,21 @@ void operator+=(AABB<Vec3fType> & a, AABB<Vec3fType> const & b)
 }
 
 template <typename Vec3fType> inline
+AABB<Vec3fType> calculate_aabb(std::vector<Vec3fType> const & verts)
+{
+    AABB<Vec3fType> aabb;
+    aabb.min = Vec3fType(std::numeric_limits<float>::max());
+    aabb.max = Vec3fType(std::numeric_limits<float>::lowest());
+    for (std::size_t i = 0; i < verts.size(); ++i) {
+        for (int j = 0; j < 3; ++j) {
+            aabb.min[j] = std::min(aabb.min[j], verts[i][j]);
+            aabb.max[j] = std::max(aabb.max[j], verts[i][j]);
+        }
+    }
+    return aabb;
+}
+
+template <typename Vec3fType> inline
 void calculate_aabb(Tri<Vec3fType> const & tri, AABB<Vec3fType> * aabb)
 {
     for (int i = 0; i < 3; ++i) {
@@ -74,6 +89,22 @@ float surface_area(AABB<Vec3fType> const & aabb)
     float e1 = aabb.max[1] - aabb.min[1];
     float e2 = aabb.max[2] - aabb.min[2];
     return 2.0f * (e0 * e1 + e1 * e2 + e2 * e0);
+}
+
+/* WARNING asserts valid AABB */
+template <typename Vec3fType> inline
+float volume(AABB<Vec3fType> const & aabb) {
+    Vec3fType diff = aabb.max - aabb.min;
+    return diff[0] * diff[1] * diff[2];
+}
+
+template <typename Vec3fType> inline
+bool valid(AABB<Vec3fType> const & aabb) {
+    #pragma unroll
+    for (int i = 0; i < 3; ++i) {
+        if (aabb.min[i] > aabb.max[i]) return false;
+    }
+    return true;
 }
 
 template <typename Vec3fType> inline
