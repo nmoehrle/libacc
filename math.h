@@ -38,7 +38,7 @@ std::uint64_t z_order_index(VecType<std::uint32_t, 3> position) {
     z = (z * 0x101ull) & 0x300F00F00F00F00Full;
     z = (z * 0x11ull) & 0x30C30C30C30C30C3ull;
     z = (z * 0x5ull) & 0x9249249249249249ull;
-    ret |= (x << 2ull);
+    ret |= (z << 2ull);
 
     return ret;
 }
