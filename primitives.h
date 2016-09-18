@@ -11,8 +11,6 @@
 
 #include <limits>
 
-#include <math/vector.h>
-
 #include "defines.h"
 
 ACC_NAMESPACE_BEGIN
@@ -100,7 +98,6 @@ float volume(AABB<Vec3fType> const & aabb) {
 
 template <typename Vec3fType> inline
 bool valid(AABB<Vec3fType> const & aabb) {
-    #pragma unroll
     for (int i = 0; i < 3; ++i) {
         if (aabb.min[i] > aabb.max[i]) return false;
     }
