@@ -87,6 +87,9 @@ public:
 };
 
 template <unsigned K, typename IdxType>
+constexpr IdxType KDTree<K, IdxType>::NAI;
+
+template <unsigned K, typename IdxType>
 KDTree<K, IdxType>::KDTree(std::vector<math::Vector<float, K> > const & vertices,
     int max_threads)
     : vertices(vertices), num_nodes(0) {
