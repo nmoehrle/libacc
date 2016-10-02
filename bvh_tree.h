@@ -26,8 +26,8 @@ ACC_NAMESPACE_BEGIN
 template <typename IdxType, typename Vec3fType>
 class BVHTree {
 public:
-    typedef std::shared_ptr<BVHTree<IdxType, Vec3fType> > Ptr;
-    typedef std::shared_ptr<const BVHTree<IdxType, Vec3fType> > ConstPtr;
+    typedef std::shared_ptr<BVHTree> Ptr;
+    typedef std::shared_ptr<const BVHTree> ConstPtr;
 
     typedef acc::Ray<Vec3fType> Ray;
     struct Hit {

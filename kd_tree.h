@@ -27,8 +27,8 @@ class KDTree {
 public:
     static constexpr IdxType NAI = std::numeric_limits<IdxType>::max();
 
-    typedef std::shared_ptr<KDTree<K, IdxType> > Ptr;
-    typedef std::shared_ptr<const KDTree<K, IdxType> > ConstPtr;
+    typedef std::shared_ptr<KDTree> Ptr;
+    typedef std::shared_ptr<KDTree const> ConstPtr;
 
 private:
     std::vector<math::Vector<float, K> > const vertices;
