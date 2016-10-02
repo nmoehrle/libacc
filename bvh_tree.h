@@ -127,8 +127,7 @@ void BVHTree<IdxType, Vec3fType>::split(typename Node::ID node,
     if ((*num_threads -= 1) >= 1) {
         std::tie(left, right) = sbsplit(node, aabbs);
         if (left != NAI && right != NAI) {
-            //std::thread other(&BVHTree::split, this, left, std::cref(aabbs), num_threads);
-            std::thread other(&BVHTree::split, this, left, aabbs, num_threads);
+            std::thread other(&BVHTree::split, this, left, std::cref(aabbs), num_threads);
             split(right, aabbs, num_threads);
             other.join();
         }
