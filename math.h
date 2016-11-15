@@ -9,6 +9,8 @@
 #ifndef ACC_MATH_HEADER
 #define ACC_MATH_HEADER
 
+#include <cstdint>
+
 #include "defines.h"
 
 ACC_NAMESPACE_BEGIN
@@ -46,8 +48,8 @@ std::uint64_t z_order_index(VecType<std::uint32_t, 3> position) {
 template <template<typename, int> class VecType>
 VecType<std::uint32_t, 3> z_order_position(std::uint64_t index) {
     /* Derived from an implementation by Jens Schneider */
-    math::Vector<std::uint64_t, 3> tmp;
-    math::Vector<std::uint32_t, 3> ret;
+    VecType<std::uint64_t, 3> tmp;
+    VecType<std::uint32_t, 3> ret;
     tmp[0] = index & 0x9249249249249249ull;
     tmp[0] = (tmp[0] | (tmp[0] >> 2ull)) & 0x30C30C30C30C30C3ull;
     tmp[0] = (tmp[0] | (tmp[0] >> 4ull)) & 0x300F00F00F00F00Full;
