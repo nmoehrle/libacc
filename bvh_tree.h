@@ -21,6 +21,10 @@
 
 #include "primitives.h"
 
+#ifndef BVHTREE_NUM_BINS
+    #define BVHTREE_NUM_BINS 64
+#endif
+
 ACC_NAMESPACE_BEGIN
 
 template <typename IdxType, typename Vec3fType>
@@ -117,7 +121,6 @@ public:
 template <typename IdxType, typename Vec3fType>
 constexpr IdxType BVHTree<IdxType, Vec3fType>::NAI;
 
-#define NUM_BINS 64
 template <typename IdxType, typename Vec3fType>
 void BVHTree<IdxType, Vec3fType>::split(typename Node::ID node,
         std::vector<AABB> const & aabbs,
@@ -150,14 +153,19 @@ template <typename IdxType, typename Vec3fType>
 std::pair<typename BVHTree<IdxType, Vec3fType>::Node::ID, typename BVHTree<IdxType, Vec3fType>::Node::ID>
 BVHTree<IdxType, Vec3fType>::sbsplit(typename Node::ID node_id,
         std::vector<AABB> const & aabbs) {
+#if BVHTREE_NUM_BINS
     Node const & node = nodes[node_id];
     IdxType n = node.last - node.first;
-    if (n > NUM_BINS) {
+    if (n > BVHTREE_NUM_BINS) {
         return bsplit(node_id, aabbs);
     } else {
         return ssplit(node_id, aabbs);
     }
+#else
+    return ssplit(node_id, aabbs);
+#endif
 }
+#if BVHTREE_NUM_BINS
 
 template <typename IdxType, typename Vec3fType>
 std::pair<typename BVHTree<IdxType, Vec3fType>::Node::ID, typename BVHTree<IdxType, Vec3fType>::Node::ID>
@@ -166,8 +174,8 @@ BVHTree<IdxType, Vec3fType>::bsplit(typename Node::ID node_id,
     Node & node = nodes[node_id];
     IdxType n = node.last - node.first;
 
-    std::array<Bin, NUM_BINS> bins;
-    std::array<AABB, NUM_BINS> right_aabbs;
+    std::array<Bin, BVHTREE_NUM_BINS> bins;
+    std::array<AABB, BVHTREE_NUM_BINS> right_aabbs;
     std::vector<IdxType> bin(n);
 
     float min_cost = inf;
@@ -180,20 +188,20 @@ BVHTree<IdxType, Vec3fType>::bsplit(typename Node::ID node_id,
         }
         for (std::size_t i = node.first; i < node.last; ++i) {
             AABB const & aabb = aabbs[indices[i]];
-            char idx = ((mid(aabb, d) - min) / (max - min)) * (NUM_BINS - 1);
+            char idx = ((mid(aabb, d) - min) / (max - min)) * (BVHTREE_NUM_BINS - 1);
             bins[idx].aabb += aabb;
             bins[idx].n += 1;
             bin[i - node.first] = idx;
         }
 
-        right_aabbs[NUM_BINS - 1] = bins[NUM_BINS - 1].aabb;
-        for (std::size_t i = NUM_BINS - 1; i > 0; --i) {
+        right_aabbs[BVHTREE_NUM_BINS - 1] = bins[BVHTREE_NUM_BINS - 1].aabb;
+        for (std::size_t i = BVHTREE_NUM_BINS - 1; i > 0; --i) {
             right_aabbs[i - 1] = bins[i - 1].aabb + right_aabbs[i];
         }
 
         AABB left_aabb = bins[0].aabb;
         std::size_t nl = bins[0].n;
-        for (std::size_t idx = 1; idx < NUM_BINS; ++idx) {
+        for (std::size_t idx = 1; idx < BVHTREE_NUM_BINS; ++idx) {
             std::size_t nr = n - nl;
             float cost = (surface_area(left_aabb) / surface_area(node.aabb) * nl
             + surface_area(right_aabbs[idx]) / surface_area(node.aabb) * nr);
@@ -221,7 +229,7 @@ BVHTree<IdxType, Vec3fType>::bsplit(typename Node::ID node_id,
 
     for (std::size_t i = node.first; i < node.last; ++i) {
         AABB const & aabb = aabbs[indices[i]];
-        char idx = ((mid(aabb, d) - min) / (max - min)) * (NUM_BINS - 1);
+        char idx = ((mid(aabb, d) - min) / (max - min)) * (BVHTREE_NUM_BINS - 1);
         bins[idx].aabb += aabb;
         bins[idx].n += 1;
         bin[i - node.first] = idx;
@@ -246,7 +254,7 @@ BVHTree<IdxType, Vec3fType>::bsplit(typename Node::ID node_id,
 
     node.left = create_node(node.first, m);
     node.right = create_node(m, node.last);
-    for (std::size_t idx = 0; idx < NUM_BINS; ++idx) {
+    for (std::size_t idx = 0; idx < BVHTREE_NUM_BINS; ++idx) {
         if (idx < sidx) {
             nodes[node.left].aabb += bins[idx].aabb;
         } else {
@@ -256,6 +264,7 @@ BVHTree<IdxType, Vec3fType>::bsplit(typename Node::ID node_id,
 
     return std::make_pair(node.left, node.right);
 }
+#endif
 
 template <typename IdxType, typename Vec3fType>
 std::pair<typename BVHTree<IdxType, Vec3fType>::Node::ID, typename BVHTree<IdxType, Vec3fType>::Node::ID>
@@ -297,7 +306,7 @@ BVHTree<IdxType, Vec3fType>::ssplit(typename Node::ID node_id, std::vector<AABB>
         }
     }
 
-    if (min_cost >= n) return std::make_pair(NAI, NAI);
+    if (min_cost >= 0.75f * n) return std::make_pair(NAI, NAI);
 
     char d;
     IdxType i;
@@ -336,18 +345,49 @@ BVHTree<IdxType, Vec3fType>::BVHTree(std::vector<IdxType> const & faces,
         calculate_aabb(ttris[i], &aabbs[i]);
         root.aabb += aabbs[i];
     }
-    indices.resize(aabbs.size());
+
+    indices.resize(num_faces);
     std::iota(indices.begin(), indices.end(), 0);
 
     std::atomic<int> num_threads(max_threads);
     split(0, aabbs, &num_threads);
 
+    nodes.resize(num_nodes);
+
+    /* Order breath first */
+    typename Node::ID node_id = 0;
+    typename Node::ID idx = 0;
+
+    IdxType last = 0;
+
+    std::vector<IdxType> nindices;
+    nindices.reserve(indices.size());
+    std::vector<Node> nnodes(nodes.size());
+
+    nnodes[idx++] = nodes[node_id];
+    while (node_id < nnodes.size()) {
+        Node & node = nnodes[node_id++];
+        if (node.left != NAI && node.right != NAI) {
+            nnodes[idx] = nodes[node.left];
+            node.left = idx++;
+            nnodes[idx] = nodes[node.right];
+            node.right = idx++;
+        } else {
+            nindices.insert(nindices.begin() + last,
+                indices.begin() + node.first, indices.begin() + node.last);
+            node.first = last;
+            last = static_cast<IdxType>(nindices.size());
+            node.last = last;
+        }
+    }
+
+    std::swap(nnodes, nodes);
+    std::swap(nindices, indices);
+
     tris.resize(ttris.size());
     for (std::size_t i = 0; i < indices.size(); ++i) {
         tris[i] = ttris[indices[i]];
     }
-
-    nodes.resize(num_nodes);
 }
 
 template <typename IdxType, typename Vec3fType> bool
