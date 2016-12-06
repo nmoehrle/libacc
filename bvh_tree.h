@@ -203,7 +203,7 @@ BVHTree<IdxType, Vec3fType>::bsplit(typename Node::ID node_id,
         std::size_t nl = bins[0].n;
         for (std::size_t idx = 1; idx < BVHTREE_NUM_BINS; ++idx) {
             std::size_t nr = n - nl;
-            float cost = (surface_area(left_aabb) / surface_area(node.aabb) * nl
+            float cost = 1.2f + (surface_area(left_aabb) / surface_area(node.aabb) * nl
             + surface_area(right_aabbs[idx]) / surface_area(node.aabb) * nr);
             if (cost <= min_cost) {
                 min_cost = cost;
@@ -295,8 +295,8 @@ BVHTree<IdxType, Vec3fType>::ssplit(typename Node::ID node_id, std::vector<AABB>
         for (IdxType i = node.first + 1; i < node.last; ++i) {
             IdxType nl = i - node.first;
             IdxType nr = n - nl;
-            float cost = (surface_area(left_aabb) / surface_area(node.aabb) * nl
-            + surface_area(right_aabbs[nl]) / surface_area(node.aabb) * nr);
+            float cost = 1.2f + (surface_area(left_aabb) / surface_area(node.aabb) * nl
+                + surface_area(right_aabbs[nl]) / surface_area(node.aabb) * nr);
             if (cost <= min_cost) {
                 min_cost = cost;
                 split = std::make_pair(d, i);
@@ -306,7 +306,7 @@ BVHTree<IdxType, Vec3fType>::ssplit(typename Node::ID node_id, std::vector<AABB>
         }
     }
 
-    if (min_cost >= 0.75f * n) return std::make_pair(NAI, NAI);
+    if (min_cost >= n) return std::make_pair(NAI, NAI);
 
     char d;
     IdxType i;
