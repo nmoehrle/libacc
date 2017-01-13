@@ -167,7 +167,7 @@ Vec3fType closest_point(Vec3fType const & vertex, Tri<Vec3fType> const & tri)
 {
     Vec3fType ab = tri.b - tri.a;
     Vec3fType ac = tri.c - tri.a;
-    Vec3fType normal = ac.cross(ab);
+    Vec3fType normal = ab.cross(ac);
 
     float n = normal.norm();
     //if (n < flt_eps) return false;
@@ -209,7 +209,7 @@ bool intersect(Ray<Vec3fType> const & ray, Tri<Vec3fType> const & tri,
 {
     Vec3fType ab = tri.b - tri.a;
     Vec3fType ac = tri.c - tri.a;
-    Vec3fType normal = ac.cross(ab);
+    Vec3fType normal = ab.cross(ac);
 
     float n = normal.norm();
     if (n < flt_eps) return false;

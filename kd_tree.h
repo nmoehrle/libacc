@@ -179,6 +179,7 @@ KDTree<K, IdxType>::find_nns(math::Vector<float, K> vertex, std::size_t n,
     std::vector<std::pair<IdxType, float> > * nns_ptr, float max_dist) const
 {
     std::vector<std::pair<IdxType, float> > nns;
+    nns.reserve(n);
 
     //TODO use square distances
 
