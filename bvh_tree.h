@@ -90,7 +90,8 @@ private:
         std::atomic<int> * num_threads);
 
     bool intersect(Ray const & ray, typename Node::ID node_id, Hit * hit) const;
-    Vec3fType closest_point(Vec3fType vertex, typename Node::ID node_id) const;
+    std::pair<IdxType, Vec3fType> closest_point(Vec3fType vertex,
+        typename Node::ID node_id) const;
 
 public:
     static
@@ -114,8 +115,12 @@ public:
         std::vector<Vec3fType> const & vertices,
         int max_threads = std::thread::hardware_concurrency());
 
+
+    Tri const & get_triangle(IdxType idx) const { return tris[idx]; }
+
     bool intersect(Ray ray, Hit * hit_ptr = nullptr) const;
-    Vec3fType closest_point(Vec3fType vertex, float max_dist = inf) const;
+    bool closest_point(Vec3fType vertex, std::pair<IdxType, Vec3fType> * cp_ptr,
+        float max_dist = inf) const;
 };
 
 template <typename IdxType, typename Vec3fType>
@@ -458,40 +463,47 @@ BVHTree<IdxType, Vec3fType>::intersect(Ray ray, Hit * hit_ptr) const {
     }
 }
 
-template <typename IdxType, typename Vec3fType> Vec3fType
-BVHTree<IdxType, Vec3fType>::closest_point(Vec3fType vertex, typename Node::ID node_id) const {
+template <typename IdxType, typename Vec3fType>
+std::pair<IdxType, Vec3fType>
+BVHTree<IdxType, Vec3fType>::closest_point(Vec3fType vertex,
+    typename Node::ID node_id) const
+{
     Node const & node = nodes[node_id];
 
-    Vec3fType closest;
+    IdxType idx = NAI;
+    Vec3fType cp;
     float dist = inf;
 
     for (std::size_t i = node.first; i < node.last; ++i) {
-        Vec3fType closest_tri = acc::closest_point(vertex, tris[i]);
-        float dist_tri = (closest_tri - vertex).square_norm();
+        Vec3fType cp_tri = acc::closest_point(vertex, tris[i]);
+        float dist_tri = (cp_tri - vertex).square_norm();
         if (dist_tri < dist) {
-            closest = closest_tri;
+            cp = cp_tri;
             dist = dist_tri;
+            idx = i;
         }
     }
 
-    return closest;
+    return std::make_pair(idx, cp);
 }
 
-template <typename IdxType, typename Vec3fType> Vec3fType
-BVHTree<IdxType, Vec3fType>::closest_point(Vec3fType vertex, float max_dist) const {
-
+template <typename IdxType, typename Vec3fType> bool
+BVHTree<IdxType, Vec3fType>::closest_point(Vec3fType vertex,
+    std::pair<IdxType, Vec3fType> * cp_ptr, float max_dist) const
+{
     float dist = max_dist * max_dist;
-    Vec3fType closest;
+    IdxType idx = NAI;
+    Vec3fType cp;
 
     typename Node::ID node_id = 0;
     std::stack<typename Node::ID> s;
     while (true) {
         Node const & node = nodes[node_id];
         if (node.left != NAI && node.right != NAI) {
-            Vec3fType closest_left = acc::closest_point(vertex, nodes[node.left].aabb);
-            Vec3fType closest_right = acc::closest_point(vertex, nodes[node.right].aabb);
-            float dmin_left = (closest_left - vertex).square_norm();
-            float dmin_right = (closest_right - vertex).square_norm();
+            Vec3fType cp_left = acc::closest_point(vertex, nodes[node.left].aabb);
+            Vec3fType cp_right = acc::closest_point(vertex, nodes[node.right].aabb);
+            float dmin_left = (cp_left - vertex).square_norm();
+            float dmin_right = (cp_right - vertex).square_norm();
             bool left = dmin_left < dist;
             bool right = dmin_right < dist;
             if (left && right) {
@@ -512,11 +524,14 @@ BVHTree<IdxType, Vec3fType>::closest_point(Vec3fType vertex, float max_dist) con
                 node_id = s.top(); s.pop();
             }
         } else {
-            Vec3fType closest_leaf = closest_point(vertex, node_id);
-            float dist_leaf = (closest_leaf - vertex).square_norm();
+            IdxType idx_leaf;
+            Vec3fType cp_leaf;
+            std::tie(idx_leaf, cp_leaf) = closest_point(vertex, node_id);
+            float dist_leaf = (cp_leaf - vertex).square_norm();
             if (dist_leaf < dist) {
                 dist = dist_leaf;
-                closest = closest_leaf;
+                idx = idx_leaf;
+                cp = cp_leaf;
             }
 
             if (s.empty()) break;
@@ -524,7 +539,14 @@ BVHTree<IdxType, Vec3fType>::closest_point(Vec3fType vertex, float max_dist) con
         }
     }
 
-    return closest;
+    if (idx == NAI) return false;
+
+    if (cp_ptr != nullptr) {
+        cp_ptr->first = idx;
+        cp_ptr->second = cp;
+    }
+
+    return true;
 }
 
 ACC_NAMESPACE_END
