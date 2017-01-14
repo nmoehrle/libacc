@@ -134,14 +134,15 @@ template <unsigned K, typename IdxType>
 std::pair<typename KDTree<K, IdxType>::Node::ID, typename KDTree<K, IdxType>::Node::ID>
 KDTree<K, IdxType>::ssplit(typename Node::ID node_id, std::vector<IdxType> * indices) {
     Node & node = nodes[node_id];
+    IdxType mid = (node.last + node.first) / 2;
     decltype(K) d = node.d;
-    std::sort(indices->data() + node.first, indices->data() + node.last,
+    std::nth_element(indices->begin() + node.first,
+        indices->begin() + mid, indices->begin() + node.last,
         [this, d] (IdxType a, IdxType b) -> bool {
             return vertices[a][d] < vertices[b][d];
         }
     );
     d = (d + 1) % K;
-    IdxType mid = (node.last + node.first) / 2;
     node.vertex_id = indices->at(mid);
     if (mid - node.first > 0) {
         node.left = create_node(d, node.first, mid);
