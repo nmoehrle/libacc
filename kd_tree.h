@@ -170,8 +170,8 @@ KDTree<K, IdxType>::find_nn(math::Vector<float, K> point,
 }
 
 template <typename IdxType>
-static bool compare(std::pair<IdxType, float> a, std::pair<IdxType, float> b) {
-    return a.second < b.second;
+static bool compare(std::pair<IdxType, float> l, std::pair<IdxType, float> r) {
+    return l.second < r.second;
 }
 
 template <unsigned K, typename IdxType>
