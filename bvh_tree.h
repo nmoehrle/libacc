@@ -121,6 +121,7 @@ public:
     bool intersect(Ray ray, Hit * hit_ptr = nullptr) const;
     bool closest_point(Vec3fType vertex, std::pair<IdxType, Vec3fType> * cp_ptr,
         float max_dist = inf) const;
+    Vec3fType closest_point(Vec3fType vertex);
 };
 
 template <typename IdxType, typename Vec3fType>
@@ -547,6 +548,13 @@ BVHTree<IdxType, Vec3fType>::closest_point(Vec3fType vertex,
     }
 
     return true;
+}
+
+template <typename IdxType, typename Vec3fType> Vec3fType
+BVHTree<IdxType, Vec3fType>::closest_point(Vec3fType vertex) {
+    std::pair<IdxType, Vec3fType> cp;
+    closest_point(vertex, &cp);
+    return cp.second;
 }
 
 ACC_NAMESPACE_END

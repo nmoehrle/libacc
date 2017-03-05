@@ -163,6 +163,14 @@ Vec3fType closest_point(Vec3fType const & v, AABB<Vec3fType> const & aabb)
 }
 
 template <typename Vec3fType> inline
+Vec3fType
+calculate_normal(Tri<Vec3fType> const & tri) {
+    Vec3fType ab = tri.b - tri.a;
+    Vec3fType ac = tri.c - tri.a;
+    return ab.cross(ac);
+}
+
+template <typename Vec3fType> inline
 Vec3fType closest_point(Vec3fType const & vertex, Tri<Vec3fType> const & tri)
 {
     Vec3fType ab = tri.b - tri.a;
