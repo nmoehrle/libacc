@@ -264,7 +264,7 @@ BVHTree<IdxType, Vec3fType>::ssplit(typename Node::ID node_id, std::vector<AABB>
     std::pair<char, IdxType> split;
     std::vector<AABB> right_aabbs(n);
     for (char d = 0; d < 3; ++d) {
-        std::sort(&indices[node.first], &indices[node.last],
+        std::sort(indices.begin() + node.first, indices.begin() + node.last,
             [&aabbs, d] (IdxType first, IdxType second) -> bool {
                 return mid(aabbs[first], d) < mid(aabbs[second], d)
                     || (mid(aabbs[first], d) == mid(aabbs[second], d)
@@ -299,7 +299,7 @@ BVHTree<IdxType, Vec3fType>::ssplit(typename Node::ID node_id, std::vector<AABB>
     char d;
     IdxType i;
     std::tie(d, i) = split;
-    std::sort(&indices[node.first], &indices[node.last],
+    std::sort(indices.begin() + node.first, indices.begin() + node.last,
         [&aabbs, d] (std::size_t first, std::size_t second) -> bool {
             return mid(aabbs[first], d) < mid(aabbs[second], d)
                 || (mid(aabbs[first], d) == mid(aabbs[second], d)
